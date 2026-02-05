@@ -1,0 +1,714 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tic Tac Toe (2 Players)</title>
+    <style>
+        /* ---------------------------
+       Theme variables
+    ---------------------------- */
+        :root {
+            --bg: #f6f7fb;
+            --panel: #ffffff;
+            --text: #101828;
+            --muted: #667085;
+            --border: #d0d5dd;
+            --accent: #2563eb;
+            --shadow: 0 18px 40px rgba(16, 24, 40, .12);
+
+            --cell-bg: #ffffff;
+            --cell-hover: rgba(37, 99, 235, 0.08);
+
+            /* Player mark colors (user-customizable) */
+            --x: #2563eb;
+            --o: #f97316;
+
+            --win-glow: 0 0 0 3px rgba(37, 99, 235, .25);
+            --radius: 18px;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0b1220;
+            --panel: #0f1a2e;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --border: rgba(148, 163, 184, .25);
+            --accent: #60a5fa;
+            --shadow: 0 18px 40px rgba(0, 0, 0, .45);
+
+            --cell-bg: rgba(255, 255, 255, .04);
+            --cell-hover: rgba(96, 165, 250, 0.12);
+
+            --win-glow: 0 0 0 3px rgba(96, 165, 250, .25);
+        }
+
+        /* ---------------------------
+       Base layout
+    ---------------------------- */
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .app {
+            width: min(920px, 100%);
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 18px;
+        }
+
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 18px;
+        }
+
+        header.card {
+            display: grid;
+            gap: 12px;
+        }
+
+        .top-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 20px;
+            letter-spacing: .2px;
+        }
+
+        .sub {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.35;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: end;
+        }
+
+        label {
+            font-size: 12px;
+            color: var(--muted);
+            display: grid;
+            gap: 6px;
+        }
+
+        select,
+        button,
+        input[type="color"] {
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            padding: 10px 12px;
+            font-size: 14px;
+            outline: none;
+            height: 42px;
+        }
+
+        select {
+            min-width: 160px;
+            background: rgba(255, 255, 255, .1);
+        }
+
+        /* Make color inputs look consistent */
+        input[type="color"] {
+            padding: 6px 8px;
+            width: 62px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, .1);
+        }
+
+        button {
+            cursor: pointer;
+            transition: transform .05s ease, background .15s ease;
+            white-space: nowrap;
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            border-color: transparent;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(0.98);
+        }
+
+        .btn-ghost:hover {
+            background: rgba(127, 127, 127, .08);
+        }
+
+        /* ---------------------------
+       Game area
+    ---------------------------- */
+        .game {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status-text {
+            font-size: 15px;
+            color: var(--text);
+        }
+
+        .status-text strong {
+            color: var(--accent);
+        }
+
+        .score {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .pill {
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 6px 10px;
+            background: rgba(127, 127, 127, .06);
+        }
+
+        .board-wrap {
+            display: grid;
+            place-items: center;
+            padding: 8px;
+        }
+
+        /* FIXED SIZE BOARD + CELLS (no dynamic resizing) */
+        .board {
+            width: 360px;
+            /* fixed */
+            height: 360px;
+            /* fixed */
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .cell {
+            background: var(--cell-bg);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            user-select: none;
+            transition: background .15s ease, transform .08s ease, box-shadow .15s ease;
+            font-weight: 800;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+
+        .cell:hover {
+            background: var(--cell-hover);
+        }
+
+        .cell:active {
+            transform: scale(0.99);
+        }
+
+        .cell[disabled] {
+            cursor: not-allowed;
+            opacity: .95;
+        }
+
+        .cell.win {
+            box-shadow: var(--win-glow);
+            border-color: rgba(127, 127, 127, .25);
+        }
+
+        /* Mark scales to fit, but cell stays fixed */
+        .mark {
+            display: block;
+            font-size: 88px;
+            /* fixed mark size to match fixed cells */
+            line-height: 1;
+            transform: translateY(-2px);
+        }
+
+        .mark.x {
+            color: var(--x);
+        }
+
+        .mark.o {
+            color: var(--o);
+        }
+
+        /* ---------------------------
+       Modal
+    ---------------------------- */
+        .backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, .45);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            z-index: 50;
+        }
+
+        .modal {
+            width: min(520px, 100%);
+            background: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+            padding: 18px;
+            display: grid;
+            gap: 12px;
+        }
+
+        .modal h2 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .modal p {
+            margin: 0;
+            color: var(--muted);
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+            margin-top: 6px;
+        }
+
+        /* ---------------------------
+       Confetti canvas
+    ---------------------------- */
+        canvas#confetti {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 60;
+            display: none;
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--muted);
+            text-align: center;
+            margin: 0;
+        }
+
+        /* Mobile: keep cells square but smaller */
+        @media (max-width: 420px) {
+            .board {
+                width: 300px;
+                height: 300px;
+            }
+
+            .mark {
+                font-size: 74px;
+            }
+        }
+
+        /* Fade effect when switching themes */
+        body {
+            transition: background 250ms ease, color 250ms ease;
+        }
+
+        .card,
+        .cell,
+        select,
+        button,
+        input[type="color"],
+        .pill,
+        .modal {
+            transition:
+                background-color 250ms ease,
+                color 250ms ease,
+                border-color 250ms ease,
+                box-shadow 250ms ease;
+        }
+    </style>
+</head>
+
+<body data-theme="light">
+    <canvas id="confetti"></canvas>
+
+    <main class="app">
+        <header class="card">
+            <div class="top-row">
+                <div>
+                    <h1>Tic Tac Toe</h1>
+                    <p class="sub">Two players on the same device. Click a square to place your mark.</p>
+                </div>
+
+                <div class="controls">
+                    <label>
+                        Theme
+                        <select id="themeSelect" aria-label="Theme">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        X color
+                        <input id="xColor" type="color" value="#2563eb" aria-label="X color" />
+                    </label>
+
+                    <label>
+                        O color
+                        <input id="oColor" type="color" value="#f97316" aria-label="O color" />
+                    </label>
+
+                    <button id="restartBtn" class="btn-ghost" type="button">Restart</button>
+                </div>
+            </div>
+        </header>
+
+        <section class="card game">
+            <div class="status" aria-live="polite">
+                <div class="status-text" id="statusText">Player <strong>X</strong>'s turn</div>
+                <div class="score">
+                    <span class="pill">X wins: <span id="xWins">0</span></span>
+                    <span class="pill">O wins: <span id="oWins">0</span></span>
+                    <span class="pill">Ties: <span id="ties">0</span></span>
+                </div>
+            </div>
+
+            <div class="board-wrap">
+                <div class="board" id="board" role="grid" aria-label="Tic Tac Toe Board"></div>
+            </div>
+
+            <p class="hint">Tip: Change theme and player colors anytime.</p>
+        </section>
+    </main>
+
+    <div class="backdrop" id="backdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal">
+            <h2 id="modalTitle">Game Over</h2>
+            <p id="modalMessage">Result message goes here.</p>
+
+            <div class="modal-actions">
+                <button id="viewBoardBtn" class="btn-ghost" type="button">View board</button>
+                <button id="playAgainBtn" class="btn-primary" type="button">Play again</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const boardEl = document.getElementById("board");
+        const statusTextEl = document.getElementById("statusText");
+        const restartBtn = document.getElementById("restartBtn");
+
+        const themeSelect = document.getElementById("themeSelect");
+        const xColorInput = document.getElementById("xColor");
+        const oColorInput = document.getElementById("oColor");
+
+        const backdrop = document.getElementById("backdrop");
+        const modalMessage = document.getElementById("modalMessage");
+        const playAgainBtn = document.getElementById("playAgainBtn");
+        const viewBoardBtn = document.getElementById("viewBoardBtn");
+
+        const xWinsEl = document.getElementById("xWins");
+        const oWinsEl = document.getElementById("oWins");
+        const tiesEl = document.getElementById("ties");
+
+        let board = Array(9).fill(null);
+        let currentPlayer = "X";
+        let gameOver = false;
+
+        let scores = { X: 0, O: 0, T: 0 };
+
+        const WIN_LINES = [
+            [0, 1, 2],
+            [3, 4, 5],
+            [6, 7, 8],
+            [0, 3, 6],
+            [1, 4, 7],
+            [2, 5, 8],
+            [0, 4, 8],
+            [2, 4, 6],
+        ];
+
+        function setStatus(text, highlightPlayer = null) {
+            if (!highlightPlayer) {
+                statusTextEl.textContent = text;
+                return;
+            }
+            statusTextEl.innerHTML = text.replace("{P}", `<strong>${highlightPlayer}</strong>`);
+        }
+
+        function openModal(message) {
+            modalMessage.textContent = message;
+            backdrop.style.display = "flex";
+            playAgainBtn.focus();
+        }
+
+        function closeModal() {
+            backdrop.style.display = "none";
+        }
+
+        function updateScoreUI() {
+            xWinsEl.textContent = String(scores.X);
+            oWinsEl.textContent = String(scores.O);
+            tiesEl.textContent = String(scores.T);
+        }
+
+        function applyPlayerColors() {
+            document.documentElement.style.setProperty("--x", xColorInput.value);
+            document.documentElement.style.setProperty("--o", oColorInput.value);
+        }
+
+        function renderBoard() {
+            boardEl.innerHTML = "";
+
+            board.forEach((value, idx) => {
+                const cell = document.createElement("button");
+                cell.className = "cell";
+                cell.type = "button";
+                cell.setAttribute("role", "gridcell");
+                cell.setAttribute("aria-label", `Cell ${idx + 1}`);
+                if (value || gameOver) cell.setAttribute("disabled", "true");
+
+                if (value) {
+                    const span = document.createElement("span");
+                    span.className = "mark " + (value === "X" ? "x" : "o");
+                    span.textContent = value;
+                    cell.appendChild(span);
+                }
+
+                cell.addEventListener("click", () => handleMove(idx));
+                boardEl.appendChild(cell);
+            });
+        }
+
+        function highlightWin(line) {
+            const cells = boardEl.querySelectorAll(".cell");
+            line.forEach(i => cells[i].classList.add("win"));
+        }
+
+        function checkWinner() {
+            for (const line of WIN_LINES) {
+                const [a, b, c] = line;
+                if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                    return { winner: board[a], line };
+                }
+            }
+            if (board.every(Boolean)) return { winner: "T", line: null };
+            return { winner: null, line: null };
+        }
+
+        function handleMove(idx) {
+            if (gameOver) return;
+            if (board[idx]) return;
+
+            board[idx] = currentPlayer;
+            renderBoard();
+
+            const result = checkWinner();
+            if (result.winner) {
+                gameOver = true;
+
+                if (result.winner === "T") {
+                    scores.T += 1;
+                    updateScoreUI();
+                    setStatus("It's a tie!");
+                    openModal("It's a tie! No confetti this time. Want to play again?");
+                } else {
+                    scores[result.winner] += 1;
+                    updateScoreUI();
+                    setStatus("Player {P} wins!", result.winner);
+                    if (result.line) highlightWin(result.line);
+
+                    fireConfetti(); // win only
+                    openModal(`Player ${result.winner} wins! 🎉 Play again?`);
+                }
+                return;
+            }
+
+            currentPlayer = currentPlayer === "X" ? "O" : "X";
+            setStatus("Player {P}'s turn", currentPlayer);
+        }
+
+        function resetGame() {
+            board = Array(9).fill(null);
+            gameOver = false;
+            currentPlayer = "X";
+            setStatus("Player {P}'s turn", currentPlayer);
+            renderBoard();
+            stopConfetti();
+        }
+
+        // Theme + colors
+        themeSelect.addEventListener("change", (e) => {
+            document.body.setAttribute("data-theme", e.target.value);
+        });
+
+        xColorInput.addEventListener("input", () => applyPlayerColors());
+        oColorInput.addEventListener("input", () => applyPlayerColors());
+
+        restartBtn.addEventListener("click", () => {
+            closeModal();
+            resetGame();
+        });
+
+        playAgainBtn.addEventListener("click", () => {
+            closeModal();
+            resetGame();
+        });
+
+        viewBoardBtn.addEventListener("click", () => {
+            closeModal();
+        });
+
+        backdrop.addEventListener("click", (e) => {
+            if (e.target === backdrop) closeModal();
+        });
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Escape" && backdrop.style.display === "flex") {
+                closeModal();
+            }
+        });
+
+        // ---------------------------
+        // Confetti (simple canvas)
+        // ---------------------------
+        const confettiCanvas = document.getElementById("confetti");
+        const ctx = confettiCanvas.getContext("2d");
+        let confettiRunning = false;
+        let confettiPieces = [];
+        let confettiAnimId = null;
+
+        function resizeConfetti() {
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        window.addEventListener("resize", resizeConfetti);
+        resizeConfetti();
+
+        function rand(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        function makeConfettiPiece() {
+            const w = rand(6, 12);
+            const h = rand(8, 16);
+            const xColor = getComputedStyle(document.documentElement).getPropertyValue("--x").trim();
+            const oColor = getComputedStyle(document.documentElement).getPropertyValue("--o").trim();
+            const accent = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim();
+
+            const palette = [xColor, oColor, accent, "#22c55e", "#f59e0b", "#a78bfa"];
+
+            return {
+                x: rand(0, confettiCanvas.width),
+                y: rand(-confettiCanvas.height * 0.2, -20),
+                w,
+                h,
+                vx: rand(-2.2, 2.2),
+                vy: rand(3.2, 6.8),
+                rot: rand(0, Math.PI),
+                vr: rand(-0.2, 0.2),
+                color: palette[Math.floor(rand(0, palette.length))]
+            };
+        }
+
+        function fireConfetti() {
+            stopConfetti();
+            confettiRunning = true;
+            confettiCanvas.style.display = "block";
+            confettiPieces = Array.from({ length: 180 }, makeConfettiPiece);
+            confettiLoop();
+            setTimeout(stopConfetti, 2500);
+        }
+
+        function stopConfetti() {
+            confettiRunning = false;
+            confettiCanvas.style.display = "none";
+            confettiPieces = [];
+            if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
+            confettiAnimId = null;
+            ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        }
+
+        function confettiLoop() {
+            if (!confettiRunning) return;
+
+            ctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+
+            for (const p of confettiPieces) {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.rot += p.vr;
+
+                ctx.save();
+                ctx.translate(p.x, p.y);
+                ctx.rotate(p.rot);
+                ctx.fillStyle = p.color;
+                ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                ctx.restore();
+            }
+
+            confettiPieces = confettiPieces.filter(p => p.y < confettiCanvas.height + 40);
+
+            if (confettiPieces.length === 0) {
+                stopConfetti();
+                return;
+            }
+
+            confettiAnimId = requestAnimationFrame(confettiLoop);
+        }
+
+        // Init
+        applyPlayerColors();
+        updateScoreUI();
+        renderBoard();
+        setStatus("Player {P}'s turn", currentPlayer);
+    </script>
+</body>
+
+</html>
